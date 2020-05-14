@@ -24,9 +24,14 @@
  */
 package net.runelite.cache.codeupdater.apifiles;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
+import net.runelite.cache.EnumManager;
 import net.runelite.cache.ItemManager;
 import net.runelite.cache.NpcManager;
 import net.runelite.cache.ObjectManager;
@@ -38,6 +43,24 @@ import org.eclipse.jgit.lib.Repository;
 
 public class APIUpdate
 {
+	/**
+	 * Enums to dump with KEY = VALUE mapping
+	 * Key: Enum ID
+	 * Value: File name
+	 */
+	private static final Map<Integer, String> enumsForward = ImmutableMap.<Integer, String>builder().build();
+
+	/**
+	 * Enums to dump with VAlUE = KEY mapping
+	 * Key: Enum ID
+	 * Value: File name
+	 *
+	 * 1713: (int) World map point category -> (String) World map point descriptions
+	 */
+	private static final Map<Integer, String> enumsBackward = ImmutableMap.<Integer, String>builder()
+		.put(1713, "WorldMapPointCategory")
+		.build();
+
 	public static void update() throws IOException, GitAPIException
 	{
 		Repository repo = Repo.RUNELITE.get();
@@ -69,6 +92,23 @@ public class APIUpdate
 			nm.java(tmp);
 			MutableCommit mc = new MutableCommit("NPC IDs");
 			mc.writeFileInDir(repoPath, tmp, "NpcID.java");
+			mc.finish(repo, Main.branchName);
+		}
+
+		{
+			EnumManager em = new EnumManager(Main.next);
+			em.load();
+			MutableCommit mc = new MutableCommit("Enums");
+			for (Map.Entry<Integer, String> entry : enumsForward.entrySet())
+			{
+				em.java(tmp, entry.getKey(), entry.getValue(), false);
+				mc.writeFileInDir(repoPath + "enums/", tmp, entry.getValue() + ".java");
+			}
+			for (Map.Entry<Integer, String> entry : enumsBackward.entrySet())
+			{
+				em.java(tmp, entry.getKey(), entry.getValue(), true);
+				mc.writeFileInDir(repoPath + "enums/", tmp, entry.getValue() + ".java");
+			}
 			mc.finish(repo, Main.branchName);
 		}
 	}
